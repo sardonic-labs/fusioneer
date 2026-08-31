@@ -1,5 +1,10 @@
 # fusioneer
 
+[![CI](https://github.com/sardonic-labs/fusioneer/actions/workflows/ci.yml/badge.svg)](https://github.com/sardonic-labs/fusioneer/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Bun](https://img.shields.io/badge/Bun-1.4-black?logo=bun)](https://bun.sh)
+[![opencode](https://img.shields.io/badge/opencode-run-blue)](https://opencode.ai)
+
 Home managed agents on `opencode run` — define agents that run 24/7, per repo.
 
 > Single Dockerized VPS process at your domain. Inspired by `coalesce-labs/catalyst`, built on [opencode](https://opencode.ai).
@@ -34,4 +39,12 @@ bun run index.ts
 bun tsc --noEmit
 ```
 
-Requires Bun 1.4+, opencode, `gh` CLI. License MIT.
+Requires Bun 1.4+, opencode, `gh` CLI. License [MIT](./LICENSE).
+
+## Contributing
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md). Flow: `Issue → Branch type/slug-#issue → PR Closes # → Squash merge`.
+
+## Security
+
+See [SECURITY.md](./SECURITY.md). Code of conduct: [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md).
