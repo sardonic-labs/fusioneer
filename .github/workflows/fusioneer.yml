@@ -11,19 +11,25 @@ on:
 
 jobs:
   trigger:
-    if: contains(github.event.label.name, 'fusioneer:auto') || contains(github.event.comment.body, '/fusioneer') || github.event_name == 'pull_request'
+    if: >-
+      github.event.label.name == 'fusioneer:auto' ||
+      contains(github.event.comment.body || '', '/fusioneer') ||
+      github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - name: Trigger fusioneer webhook
         env:
           FUSIONEER_DOMAIN: ${{ secrets.FUSIONEER_DOMAIN }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if [ -z "$FUSIONEER_DOMAIN" ]; then echo "FUSIONEER_DOMAIN not set — skipping"; exit 0; fi
-          payload=$(jq -n --arg repo "${{ github.repository }}" --arg event "${{ github.event_name }}" --argjson payload '${{ toJson(github.event) }}' '{repo:$repo,event:$event,payload:$payload}')
-          # HMAC via webhook secret if available; VPS verifies X-Hub-Signature-256
+          # jq is preinstalled on ubuntu-latest; build minimal forwarding payload
+          payload=$(jq -n \
+            --arg repo "${{ github.repository }}" \
+            --arg event "${{ github.event_name }}" \
+            --argjson gh '${{ toJson(github.event) }}' \
+            '{repo:$repo, event:$event, payload:$gh}')
           curl -fsSL -X POST "$FUSIONEER_DOMAIN/webhook/github" \
             -H "Content-Type: application/json" \
-            -H "X-GitHub-Event: $event" \
-            -H "X-GitHub-Delivery: ${{ github.event.repository.id }}-${{ github.run_id }}" \
-            -d "$payload" || echo "webhook failed"
+            -H "X-GitHub-Event: ${{ github.event_name }}" \
+            -H "X-GitHub-Delivery: ${{ github.run_id }}-${{ github.run_attempt }}" \
+            -d "$payload" || echo "webhook failed (VPS unreachable)"
