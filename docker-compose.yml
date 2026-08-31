@@ -1,0 +1,18 @@
+services:
+  fusioneer:
+    build: .
+    image: fusioneer:latest
+    container_name: fusioneer
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "3000:3000"
+    volumes:
+      - fusioneer-data:/data
+      - /var/run/docker.sock:/var/run/docker.sock # for worktree jobs if needed
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+
+volumes:
+  fusioneer-data:

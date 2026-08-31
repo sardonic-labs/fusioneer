@@ -1,0 +1,18 @@
+{
+  "$schema": "https://opencode.ai/fusioneer.json",
+  "triggers": {
+    "issues": ["labeled"],
+    "pull_request": ["opened", "synchronize"],
+    "issue_comment": ["created"],
+    "pull_request_review_comment": ["created"]
+  },
+  "labels": {
+    "auto": "fusioneer:auto"
+  },
+  "verify": "bun run check",
+  "hardware_verify": "python fiducial/scripts/fiducial.py lint && python fiducial/scripts/fiducial.py erc && python fiducial/scripts/fiducial.py check-intent",
+  "revision": {
+    "triggers": ["/fusioneer", "/revise"],
+    "maxRevisions": 3
+  }
+}
