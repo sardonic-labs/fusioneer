@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "instructions": ["GLOBAL_CTX.md"],
+  "permission": {
+    "bash": {
+      "git status *": "allow",
+      "gh *": "allow"
+    }
+  }
+}
