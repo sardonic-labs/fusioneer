@@ -1,7 +1,7 @@
 ---
 description: "Tackle a GitHub issue end-to-end via triage->plan->implement->verify->pr"
 mode: primary
-model: opencode/claude-sonnet-4-5
+model: opencode/muse-spark-1.2-contributor-free
 temperature: 0.2
 steps: 80
 permission:
@@ -19,6 +19,14 @@ permission:
     "gh pr merge*": deny
     "bun *": allow
     "python *": allow
+    "jq *": allow
+    "cat *": allow
+    "ls *": allow
+    "ls": allow
+    "head *": allow
+    "echo *": allow
+    "pwd": allow
+    "pwd *": allow
     "rm -rf *": deny
 ---
 

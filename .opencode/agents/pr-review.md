@@ -1,7 +1,7 @@
 ---
 description: "Review a pull request — read-only, GraphQL thread replies"
 mode: subagent
-model: opencode/claude-sonnet-4-5
+model: opencode/muse-spark-1.2-contributor-free
 temperature: 0.1
 steps: 40
 permission:

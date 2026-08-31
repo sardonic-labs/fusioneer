@@ -19,6 +19,11 @@
       "bun *": "allow",
       "gh *": "allow",
       "gh pr merge*": "deny",
+      "jq *": "allow",
+      "cat *": "allow",
+      "ls *": "allow",
+      "head *": "allow",
+      "echo *": "allow",
       "rm -rf *": "deny",
       "rm -rf /*": "deny"
     }

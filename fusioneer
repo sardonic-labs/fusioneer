@@ -1,0 +1,31 @@
+#!/usr/bin/env bun
+import { run } from "./src/runner.ts";
+
+const [cmd, ...rest] = process.argv.slice(2);
+if (cmd === "run") {
+  const parse = (argv: string[]) => {
+    const o: Record<string, string | boolean> = {};
+    for (let i = 0; i < argv.length; i++) {
+      const a = argv[i]!;
+      if (a === "--dry-run") o["dryRun"] = true;
+      else if (a.startsWith("--") && argv[i + 1] && !argv[i + 1]!.startsWith("--")) {
+        o[a.slice(2)] = argv[++i]!;
+      } else if (a.startsWith("--") && a.includes("=")) {
+        const [k, v] = a.slice(2).split("=");
+        o[k!] = v!;
+      }
+    }
+    return o;
+  };
+  const o = parse(rest);
+  const repo = String(o["repo"] ?? "");
+  const issue = Number(o["issue"] ?? 0);
+  if (!repo || !issue) {
+    console.error("usage: bun fusioneer run --repo owner/name --issue N [--type feat] [--model provider/model] [--dry-run]");
+    process.exit(2);
+  }
+  await run({ repo, issue, type: o["type"] as string | undefined, model: o["model"] as string | undefined, dryRun: Boolean(o["dryRun"]) });
+} else {
+  console.error("usage: bun fusioneer run --repo owner/name --issue N [--dry-run]");
+  process.exit(2);
+}
