@@ -1,12 +1,22 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
+export type Schedule = {
+  cron?: string; // "0 * * * *" or "0 6 * * *"
+  interval?: string; // "1h", "30m", "6h", "1d" — parsed to ms
+  issue?: number; // if set, run pipeline for that issue; else run as scheduled task type
+  type?: string; // "feat" | "chore" etc for branch naming
+  prompt?: string; // optional prompt override for scheduled run
+  enabled?: boolean; // default true
+};
+
 export type FusioneerConfig = {
   triggers?: Record<string, string[]>;
   labels?: { auto?: string };
   verify?: string;
   hardware_verify?: string;
   revision?: { triggers?: string[]; maxRevisions?: number };
+  schedules?: Schedule[];
 };
 
 const DEFAULT_VERIFY = "bun run check";

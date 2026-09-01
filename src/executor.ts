@@ -3,7 +3,7 @@ import { hasFiducialDir, loadFusioneerConfig, readGlobalCtx, readReviewMd, resol
 import { PHASES, runOpencodePhase, createDraftPr } from "./phases.ts";
 import { createWorktree, branchName } from "./worktree.ts";
 import { updateJob, appendJobLogs, appendEvent } from "./db.ts";
-import { isRepoAllowed, isRevisionAllowed } from "./policy-guard.ts";
+import { isRepoAllowed } from "./policy-guard.ts";
 
 export type ExecuteOpts = {
   jobId: string;
@@ -74,9 +74,10 @@ export async function executeJob(opts: ExecuteOpts): Promise<{ success: boolean;
 
     let failed = false;
     let exitCode = 0;
+    const useStructured = process.env.FUSIONEER_STRUCTURED === "1";
     for (const phase of PHASES) {
       updateJob(jobId, { phase });
-      appendJobLogs(jobId, `\n[executor] phase ${phase}...\n`);
+      appendJobLogs(jobId, `\n[executor] phase ${phase}...${useStructured ? " (structured)" : ""}\n`);
       appendEvent(jobId, "phase.start", { phase });
 
       // For revision, inject previous diff + body into extra for implement phase
@@ -88,17 +89,43 @@ export async function executeJob(opts: ExecuteOpts): Promise<{ success: boolean;
         } catch {}
       }
 
-      const res = await runOpencodePhase({
-        worktreeDir: handle.worktreeDir,
-        phase,
-        repo,
-        issue,
-        globalCtx,
-        reviewMd,
-        verifyCmd,
-        extra,
-        timeoutMs: 30 * 60 * 1000,
-      });
+      // Phase 4: structured output via createOpencode for triage/plan when enabled
+      let res: Awaited<ReturnType<typeof runOpencodePhase>>;
+      if (useStructured && (phase === "triage" || phase === "plan")) {
+        try {
+          const { createOpencode } = await import("./opencode.ts");
+          const oc = createOpencode({ worktreeDir: handle.worktreeDir });
+          const prompt = [ `Repo: ${repo} Issue: #${issue} Phase: ${phase}`, `Verify command: \`${verifyCmd}\``, [globalCtx, reviewMd].filter(Boolean).join("\n\n---\n\n"), extra ?? ""].filter(Boolean).join("\n\n");
+          const structured = await oc.run(phase as any, prompt);
+          appendJobLogs(jobId, `[structured ${phase}] ${JSON.stringify(structured.data).slice(0, 4000)}\n`);
+          res = { phase, exitCode: 0, output: JSON.stringify(structured.data, null, 2) + "\n" + structured.raw.slice(0, 4000) };
+        } catch (e) {
+          appendJobLogs(jobId, `[structured ${phase} fallback] ${String(e).slice(0, 2000)}\n`);
+          res = await runOpencodePhase({
+            worktreeDir: handle.worktreeDir,
+            phase,
+            repo,
+            issue,
+            globalCtx,
+            reviewMd,
+            verifyCmd,
+            extra,
+            timeoutMs: 30 * 60 * 1000,
+          });
+        }
+      } else {
+        res = await runOpencodePhase({
+          worktreeDir: handle.worktreeDir,
+          phase,
+          repo,
+          issue,
+          globalCtx,
+          reviewMd,
+          verifyCmd,
+          extra,
+          timeoutMs: 30 * 60 * 1000,
+        });
+      }
 
       const logChunk = `[phase ${phase} exit=${res.exitCode}]\n${res.output.slice(0, 8000)}\n`;
       appendJobLogs(jobId, logChunk);

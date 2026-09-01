@@ -96,6 +96,21 @@ app.get("/agents", (c: Context) => {
   return c.json({ repos, jobs: jobs.slice(0, 10) });
 });
 
+// Phase 4: scheduler status
+app.get("/schedules", async (c: Context) => {
+  const { getSchedulerStatus } = await import("./scheduler.ts");
+  return c.json({ schedules: getSchedulerStatus() });
+});
+
+// Phase 4: structured output test (private gantry ready)
+app.get("/structured/schemas", (c: Context) => {
+  return c.json({
+    triage: { decision: "in_scope|out_of_scope", reason: "string", labels: "string[]" },
+    plan: { problem: "string", approach: "string", files: "string[]", verify: "string" },
+    note: "use createOpencode().run(phase,prompt,schema) from src/opencode.ts",
+  });
+});
+
 // Webhook HMAC helper
 async function verifyHmac(secret: string, payload: string, signature: string | null): Promise<boolean> {
   if (!secret) return true; // no secret = allow (dev)

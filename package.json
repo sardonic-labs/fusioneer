@@ -15,13 +15,16 @@
     "fusioneer": "./fusioneer"
   },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "@types/cron": "^2.4.3"
   },
   "peerDependencies": {
     "typescript": "^7"
   },
   "dependencies": {
+    "cron": "^4.4.0",
     "hono": "^4.13.5",
-    "p-queue": "^9.3.3"
+    "p-queue": "^9.3.3",
+    "zod": "^4.5.4"
   }
 }

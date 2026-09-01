@@ -35,7 +35,8 @@ export async function createWorktree(opts: {
   const cloneDir = join(tmpRoot, "repo");
   const worktreeDir = join(tmpRoot, "wt");
 
-  const repoUrl = `https://github.com/${opts.repo}.git`;
+  const token = process.env.GITHUB_TOKEN;
+  const repoUrl = token ? `https://x-access-token:${token}@github.com/${opts.repo}.git` : `https://github.com/${opts.repo}.git`;
 
   // Shallow clone default branch
   await $`git clone --depth 1 ${repoUrl} ${cloneDir}`.quiet();

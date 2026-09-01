@@ -14,5 +14,18 @@
   "revision": {
     "triggers": ["/fusioneer", "/revise"],
     "maxRevisions": 3
-  }
-}
+  },
+  "schedules": [
+    {
+      "cron": "0 6 * * *",
+      "type": "chore",
+      "prompt": "Daily corpus check — run verify and ensure docs are up to date",
+      "enabled": false
+    },
+    {
+      "interval": "6h",
+      "type": "chore",
+      "prompt": "Periodic verify sweep",
+      "enabled": false
+    }
+  ]
