@@ -363,15 +363,15 @@
   .sched-list{display:flex; flex-direction:column; gap:6px;}
   .sched{display:flex; gap:8px; align-items:center; font-size:12px; padding:6px 8px; background:#f8fafc; border:1px solid #f1f5f9; border-radius:8px;}
   .pill{padding:2px 8px; border-radius:999px; background:#fff; border:1px solid #e2e8f0; font-size:11px; font-weight:500;}
-  .filter{display:flex; flex-direction:column; gap:10px;}
-  .search{position:relative; display:flex; align-items:center;}
-  .search-icon{position:absolute; left:10px; color:#94a3b8; font-size:14px;}
-  .search input{width:100%; padding:8px 12px 8px 32px; border-radius:999px; border:1px solid #e2e8f0; background:#f8fafc; outline:none; font-size:13px;}
+  .filter{display:flex; flex-direction:column; gap:12px;}
+  .search{position:relative; display:flex; align-items:center; min-height:36px;}
+  .search-icon{position:absolute; left:12px; color:#94a3b8; font-size:14px; pointer-events:none; z-index:1;}
+  .search input{width:100%; height:36px; padding:0 12px 0 34px; border-radius:999px; border:1px solid #e2e8f0; background:#f8fafc; outline:none; font-size:13px; line-height:36px;}
   .search.focused input{border-color:#6366f1; background:#fff; box-shadow: 0 0 0 3px #6366f122;}
-  .pills{display:flex; gap:6px; flex-wrap:wrap;}
-  .pill-btn{padding:6px 12px; border-radius:999px; border:1px solid #e2e8f0; background:#fff; font-size:12px; cursor:pointer; color:#475569; font-weight:500;}
+  .pills{display:flex; gap:6px; flex-wrap:wrap; padding-top:2px;}
+  .pill-btn{padding:6px 12px; border-radius:999px; border:1px solid #e2e8f0; background:#fff; font-size:12px; cursor:pointer; color:#475569; font-weight:500; line-height:1.2; white-space:nowrap;}
   .pill-btn.active{background:#0f172a; color:#fff; border-color:#0f172a;}
-  .filter-meta{display:flex; gap:12px; font-size:11px; color:#64748b;}
+  .filter-meta{display:flex; gap:12px; font-size:11px; color:#64748b; margin-top:2px;}
   .filter-meta span{white-space:nowrap;}
 
   .layout{display:grid; grid-template-columns: 1.15fr .85fr; gap:12px; margin-top:12px;}
