@@ -88,6 +88,12 @@ export async function run(opts: RunnerOpts): Promise<void> {
 
       // pr phase: push + gh pr create (handled inside phases via opencode, but fallback here)
       if (phase === "pr" && !opts.dryRun) {
+        // Auto-clean PLAN.md — internal planning artifact, not part of PR diff
+        try {
+          await $`rm -f ${handle.worktreeDir}/PLAN.md`.quiet();
+          // If PLAN.md was already tracked (shouldn't be), untrack it without deleting
+          await $`git -C ${handle.worktreeDir} rm --cached --ignore-unmatch PLAN.md`.quiet().catch(() => {});
+        } catch {}
         const hasDiff = (await $`git -C ${handle.worktreeDir} status --porcelain`.text()).trim();
         if (hasDiff) {
           await $`git -C ${handle.worktreeDir} add -A`.quiet();

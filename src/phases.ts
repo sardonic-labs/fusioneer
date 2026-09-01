@@ -26,7 +26,7 @@ function buildPrompt(opts: {
     plan: `You are in PLAN phase. Read the triage output and issue. Write PLAN.md in worktree root (repo root) with: Problem, Approach, Files to change, Verify command. Be concise. This file must exist for next phase.`,
     implement: `You are in IMPLEMENT phase. Read PLAN.md and issue #${opts.issue} via "gh issue view ${opts.issue} --repo ${opts.repo} --json title,body" and make the minimal edits to satisfy the plan. Keep diff minimal.`,
     verify: `You are in VERIFY phase. Run the verify command: \`${opts.verifyCmd}\` via bash in worktree. Report exit code. Do not claim clean without running it. If python not found, try python3.`,
-    pr: `You are in PR phase. Verify git diff, commit and push branch fusioneer/<type>-<n>-<slug>, create draft PR with "Closes #${opts.issue}". Skip if dry-run.`,
+    pr: `You are in PR phase. First remove PLAN.md if it exists (rm -f PLAN.md; git rm --cached --ignore-unmatch PLAN.md) — it is an internal planning artifact and must NOT be committed or included in the PR diff. Then verify git diff, commit and push branch fusioneer/<type>-<n>-<slug>, create draft PR with "Closes #${opts.issue}". Skip if dry-run.`,
   };
   const body = opts.extra ?? phaseInstructions[opts.phase];
   return [header, verify, ctx, body].filter(Boolean).join("\n\n");
