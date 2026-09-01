@@ -29,6 +29,7 @@
   let autoRefresh = $state(true);
   let eventSource: EventSource | null = null;
   let searchFocused = $state(false);
+  let logsEl: HTMLPreElement | null = $state(null);
 
   const api = (p: string) => p;
 
@@ -62,12 +63,27 @@
   $effect(() => {
     if (selected) {
       logs = selected.logs ?? '';
+      // scroll to bottom when logs change
+      queueMicrotask(() => {
+        if (logsEl) logsEl.scrollTop = logsEl.scrollHeight;
+      });
       eventSource?.close();
       try {
         const es = new EventSource(api(`/jobs/${selected.id}/logs`));
         eventSource = es;
         es.onmessage = (e) => {
-          try { const d = JSON.parse(e.data); if (d.logs) logs = d.logs; } catch {}
+          try {
+            const d = JSON.parse(e.data);
+            if (d.logs) {
+              logs = d.logs;
+              queueMicrotask(() => {
+                if (logsEl) {
+                  const nearBottom = logsEl.scrollHeight - logsEl.scrollTop - logsEl.clientHeight < 80;
+                  if (nearBottom) logsEl.scrollTop = logsEl.scrollHeight;
+                }
+              });
+            }
+          } catch {}
         };
         es.addEventListener('done', () => es.close());
         es.onerror = () => es.close();
@@ -76,6 +92,18 @@
       eventSource?.close();
       eventSource = null;
     }
+  });
+
+  // also scroll when logs prop updates via polling
+  $effect(() => {
+    // track logs dep
+    void logs;
+    queueMicrotask(() => {
+      if (logsEl && selected?.status === 'running') {
+        const nearBottom = logsEl.scrollHeight - logsEl.scrollTop - logsEl.clientHeight < 80;
+        if (nearBottom) logsEl.scrollTop = logsEl.scrollHeight;
+      }
+    });
   });
 
   let filtered = $derived(
@@ -195,16 +223,18 @@
       <div class="card-foot">daily backup 02:00 UTC · WAL · 429 backoff</div>
     </div>
 
-    <div class="card">
+    <div class="card filter-card">
       <div class="card-head"><h3>filter</h3><span class="badge">{filtered.length}/{jobs.length}</span></div>
-      <div class="search" class:focused={searchFocused}>
-        <span class="search-icon">⌕</span>
-        <input placeholder="filter repo…" bind:value={filterRepo} onfocus={() => searchFocused=true} onblur={() => searchFocused=false} />
-      </div>
-      <div class="pills">
-        {#each ['', 'queued','running','success','failed','skipped'] as s}
-          <button class="pill-btn" class:active={filterStatus===s} onclick={() => filterStatus=s}>{s || 'all'}</button>
-        {/each}
+      <div class="filter">
+        <div class="search" class:focused={searchFocused}>
+          <span class="search-icon">⌕</span>
+          <input placeholder="filter repo…" bind:value={filterRepo} onfocus={() => searchFocused=true} onblur={() => searchFocused=false} />
+        </div>
+        <div class="pills">
+          {#each ['', 'queued','running','success','failed','skipped'] as s}
+            <button class="pill-btn" class:active={filterStatus===s} onclick={() => filterStatus=s}>{s || 'all'}</button>
+          {/each}
+        </div>
       </div>
       <div class="filter-meta"><span>{queuedCount} queued</span><span>{runningCount} running</span><span>{successCount} done</span></div>
     </div>
@@ -268,8 +298,8 @@
           <button class="btn small" onclick={() => { if (selected) fetch(`/jobs/${selected.id}/logs`).then(r=>r.json()).then(d=>logs=d.logs); }}>↻ reload</button>
         </div>
         <div class="logs-wrap">
-          <div class="logs-head"><span class="muted">logs · {logs.length} chars</span><span class="live-dot" class:on={selected.status==='running'}></span></div>
-          <pre class="logs">{logs || 'no logs yet…'}</pre>
+          <div class="logs-head"><span class="muted">logs · {logs.length} chars</span><div style="display:flex; gap:6px; align-items:center;"><button class="btn small" onclick={() => { if (logsEl) logsEl.scrollTop = logsEl.scrollHeight; }}>↓ bottom</button><span class="live-dot" class:on={selected.status==='running'}></span></div></div>
+          <pre class="logs" bind:this={logsEl}>{logs || 'no logs yet…'}</pre>
         </div>
       {:else}
         <div class="empty big">
@@ -343,6 +373,7 @@
 
   .grid{display:grid; grid-template-columns: 1fr 1fr 1fr; gap:12px; margin:12px 0;}
   .card{background:#fff; border:1px solid #e2e8f0; border-radius:14px; padding:14px; box-shadow: 0 1px 2px rgba(0,0,0,0.04);}
+  .card.filter-card{display:flex; flex-direction:column; min-height: 220px;}
   .card-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;}
   .card-head h3{margin:0; font-size:11px; font-weight:700; letter-spacing:.08em; color:#64748b; text-transform:uppercase;}
   .badge{font-size:11px; padding:4px 8px; border-radius:999px; background:#f1f5f9; border:1px solid #e2e8f0; color:#475569; font-weight:500;}
@@ -363,15 +394,15 @@
   .sched-list{display:flex; flex-direction:column; gap:6px;}
   .sched{display:flex; gap:8px; align-items:center; font-size:12px; padding:6px 8px; background:#f8fafc; border:1px solid #f1f5f9; border-radius:8px;}
   .pill{padding:2px 8px; border-radius:999px; background:#fff; border:1px solid #e2e8f0; font-size:11px; font-weight:500;}
-  .filter{display:flex; flex-direction:column; gap:12px;}
+  .filter{flex:1; display:flex; flex-direction:column; gap:12px;}
   .search{position:relative; display:flex; align-items:center; min-height:36px;}
   .search-icon{position:absolute; left:12px; color:#94a3b8; font-size:14px; pointer-events:none; z-index:1;}
   .search input{width:100%; height:36px; padding:0 12px 0 34px; border-radius:999px; border:1px solid #e2e8f0; background:#f8fafc; outline:none; font-size:13px; line-height:36px;}
   .search.focused input{border-color:#6366f1; background:#fff; box-shadow: 0 0 0 3px #6366f122;}
-  .pills{display:flex; gap:6px; flex-wrap:wrap; padding-top:2px;}
+  .pills{display:flex; gap:6px; flex-wrap:wrap; padding-top:2px; align-content:flex-start;}
   .pill-btn{padding:6px 12px; border-radius:999px; border:1px solid #e2e8f0; background:#fff; font-size:12px; cursor:pointer; color:#475569; font-weight:500; line-height:1.2; white-space:nowrap;}
   .pill-btn.active{background:#0f172a; color:#fff; border-color:#0f172a;}
-  .filter-meta{display:flex; gap:12px; font-size:11px; color:#64748b; margin-top:2px;}
+  .filter-meta{display:flex; gap:12px; font-size:11px; color:#64748b; margin-top:auto; padding-top:12px; border-top:1px solid #f1f5f9;}
   .filter-meta span{white-space:nowrap;}
 
   .layout{display:grid; grid-template-columns: 1.15fr .85fr; gap:12px; margin-top:12px;}

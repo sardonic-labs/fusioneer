@@ -16,6 +16,21 @@ export type ExecuteOpts = {
   revisionBody?: string | null;
 };
 
+async function postIssueComment(repo: string, issue: number, body: string) {
+  try {
+    // Use gh CLI if available, fallback to API
+    const proc = Bun.spawn(["gh", "issue", "comment", String(issue), "--repo", repo, "--body", body], {
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+    const [out, err, code] = await Promise.all([new Response(proc.stdout).text(), new Response(proc.stderr).text(), proc.exited]);
+    if (code !== 0) {
+      // Fallback to gh api
+      await $`gh api repos/${repo}/issues/${issue}/comments -f body=${body}`.quiet().nothrow();
+    }
+  } catch {}
+}
+
 export async function executeJob(opts: ExecuteOpts): Promise<{ success: boolean; branch?: string; exitCode?: number }> {
   const { jobId, repo, issue } = opts;
   if (!isRepoAllowed(repo)) {
@@ -131,6 +146,18 @@ export async function executeJob(opts: ExecuteOpts): Promise<{ success: boolean;
       appendJobLogs(jobId, logChunk);
       appendEvent(jobId, "phase.finish", { phase, exitCode: res.exitCode });
 
+      // Phase 4.5: post issue comment with status after every phase
+      if (issue) {
+        const emoji: Record<string, string> = { triage: "🟡", plan: "🔵", implement: "🟢", verify: "🟣", pr: "🚀" };
+        const icon = emoji[phase] ?? "·";
+        const status = res.exitCode === 0 ? "done" : "failed";
+        const branchHint = handle ? ` · \`${handle.branch}\`` : "";
+        const snippet = res.output.slice(0, 600).replace(/```/g, "'''");
+        const comment = `${icon} **fusioneer: ${phase} ${status}** (exit ${res.exitCode}) for #${issue}${branchHint}\n\n<details><summary>logs</summary>\n\n\`\`\`\n${snippet}\n\`\`\`\n\n</details>\n\n[dashboard](http://localhost:3000/jobs/${jobId}) · phase \`${phase}\` · job \`${jobId.slice(0,8)}\``;
+        // fire-and-forget, don't block phase
+        postIssueComment(repo, issue, comment).catch(() => {});
+      }
+
       if (res.exitCode !== 0) {
         appendJobLogs(jobId, `[executor] phase ${phase} failed — aborting\n`);
         failed = true;
@@ -157,20 +184,58 @@ export async function executeJob(opts: ExecuteOpts): Promise<{ success: boolean;
           await $`git -C ${handle.worktreeDir} commit -m ${`feat: ${issueTitle} (#${issue})`}`.quiet().catch(() => {});
           appendJobLogs(jobId, `[executor] committed changes\n`);
         }
+        // Check if PR already exists for this branch (avoid hanging gh pr create)
+        let prExists = false;
         try {
-          await createDraftPr(handle.worktreeDir, branch, issue, issueTitle);
-          appendJobLogs(jobId, `[executor] draft PR created\n`);
-        } catch (e) {
-          // If revision, force push instead
-          if (opts.revisionBody) {
-            try {
-              await $`git -C ${handle.worktreeDir} push --force-with-lease origin ${branch}`.quiet();
-              appendJobLogs(jobId, `[executor] force-pushed revision branch\n`);
-            } catch (e2) {
-              appendJobLogs(jobId, `[executor] force-push failed: ${String(e2)}\n`);
+          const existing = await $`gh pr view ${branch} --repo ${repo} --json url`.nothrow().quiet();
+          if (existing.exitCode === 0) {
+            const j = JSON.parse(await new Response(existing.stdout as any).text().catch(() => "{}"));
+            if (j.url) {
+              prExists = true;
+              appendJobLogs(jobId, `[executor] PR already exists: ${j.url}\n`);
+              if (issue) postIssueComment(repo, issue, `🚀 **fusioneer: pr exists** for #${issue} → ${j.url} · branch \`${branch}\``).catch(() => {});
             }
-          } else {
-            appendJobLogs(jobId, `[executor] gh pr create failed: ${String(e)}\n`);
+          }
+        } catch {}
+        if (!prExists) {
+          // Wrap createDraftPr with 90s timeout to avoid stuck
+          const withTimeout = <T>(p: Promise<T>, ms: number, label: string): Promise<T> => {
+            return Promise.race([
+              p,
+              new Promise<never>((_, rej) => setTimeout(() => rej(new Error(`${label} timeout after ${ms}ms`)), ms)),
+            ]);
+          };
+          try {
+            await withTimeout(createDraftPr(handle.worktreeDir, branch, issue, issueTitle), 90_000, "gh pr create");
+            appendJobLogs(jobId, `[executor] draft PR created\n`);
+            if (issue) {
+              // Try to fetch PR url
+              try {
+                const pr = await $`gh pr view ${branch} --repo ${repo} --json url`.nothrow().quiet();
+                if (pr.exitCode === 0) {
+                  const j = JSON.parse(await new Response(pr.stdout as any).text().catch(() => "{}"));
+                  if (j.url) postIssueComment(repo, issue, `🚀 **fusioneer: pr opened** for #${issue} → ${j.url} · branch \`${branch}\` · [dashboard](http://localhost:3000/jobs/${jobId})`).catch(() => {});
+                }
+              } catch {}
+            }
+          } catch (e) {
+            const msg = String(e);
+            appendJobLogs(jobId, `[executor] pr step failed/timeout: ${msg}\n`);
+            // If revision, force push instead
+            if (opts.revisionBody) {
+              try {
+                await withTimeout($`git -C ${handle.worktreeDir} push --force-with-lease origin ${branch}`.quiet(), 30_000, "git push");
+                appendJobLogs(jobId, `[executor] force-pushed revision branch\n`);
+              } catch (e2) {
+                appendJobLogs(jobId, `[executor] force-push failed: ${String(e2)}\n`);
+              }
+            } else {
+              // Still try to push branch even if PR failed
+              try {
+                await $`git -C ${handle.worktreeDir} push -u origin ${branch}`.quiet().nothrow();
+              } catch {}
+            }
+            if (issue) postIssueComment(repo, issue, `⚠️ **fusioneer: pr failed** for #${issue} · branch \`${branch}\` · ${msg.slice(0,400)}\n\n[dashboard](http://localhost:3000/jobs/${jobId})`).catch(() => {});
           }
         }
       }
