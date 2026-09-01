@@ -11,8 +11,77 @@ import { isRepoAllowed } from "./policy-guard.ts";
 
 const app = new Hono();
 
+// Security helpers — dashboard auth (Bearer) + rate limiting + headers
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i)!;
+  return diff === 0;
+}
+function getDashboardToken(): string | null {
+  return process.env.FUSIONEER_DASHBOARD_TOKEN || process.env.DASHBOARD_TOKEN || null;
+}
+const rateBuckets = new Map<string, { count: number; reset: number }>();
+function rateLimit(ip: string, limit = 60, windowMs = 60_000): boolean {
+  const now = Date.now();
+  const b = rateBuckets.get(ip);
+  if (!b || now > b.reset) {
+    rateBuckets.set(ip, { count: 1, reset: now + windowMs });
+    return true;
+  }
+  b.count++;
+  return b.count <= limit;
+}
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, v] of rateBuckets) if (now > v.reset) rateBuckets.delete(k);
+}, 60_000).unref?.();
+
 // CORS for dashboard
 app.use("/*", cors());
+
+// Security headers
+app.use("*", async (c, next) => {
+  await next();
+  c.header("X-Content-Type-Options", "nosniff");
+  c.header("X-Frame-Options", "DENY");
+  c.header("Referrer-Policy", "no-referrer");
+  c.header("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'");
+});
+
+// Dashboard auth — protect /jobs, /queue, /agents, /schedules
+app.use("/jobs/*", async (c, next) => {
+  const token = getDashboardToken();
+  if (!token) return next();
+  const auth = c.req.header("authorization") || "";
+  const supplied = auth.startsWith("Bearer ") ? auth.slice(7) : "";
+  if (!supplied || !timingSafeEqual(supplied, token)) return c.json({ error: "unauthorized" }, 401);
+  await next();
+});
+app.use("/queue/*", async (c, next) => {
+  const token = getDashboardToken();
+  if (!token) return next();
+  const auth = c.req.header("authorization") || "";
+  const supplied = auth.startsWith("Bearer ") ? auth.slice(7) : "";
+  if (!supplied || !timingSafeEqual(supplied, token)) return c.json({ error: "unauthorized" }, 401);
+  await next();
+});
+app.use("/agents", async (c, next) => {
+  const token = getDashboardToken();
+  if (!token) return next();
+  const auth = c.req.header("authorization") || "";
+  const supplied = auth.startsWith("Bearer ") ? auth.slice(7) : "";
+  if (!supplied || !timingSafeEqual(supplied, token)) return c.json({ error: "unauthorized" }, 401);
+  await next();
+});
+app.use("/schedules", async (c, next) => {
+  const token = getDashboardToken();
+  if (!token) return next();
+  const auth = c.req.header("authorization") || "";
+  const supplied = auth.startsWith("Bearer ") ? auth.slice(7) : "";
+  if (!supplied || !timingSafeEqual(supplied, token)) return c.json({ error: "unauthorized" }, 401);
+  await next();
+});
 
 // Health
 app.get("/health", (c: Context) => {
@@ -141,7 +210,10 @@ async function verifyHmac(secret: string, payload: string, signature: string | n
 
 // Webhook receiver — POST /webhook/github
 app.post("/webhook/github", async (c: Context) => {
+  const ip = c.req.header("x-forwarded-for")?.split(",")[0]?.trim() || c.req.header("x-real-ip") || "unknown";
+  if (!rateLimit(ip, 60, 60_000)) return c.json({ error: "rate limited" }, 429);
   const rawBody = await c.req.text();
+  if (rawBody.length > 512 * 1024) return c.json({ error: "payload too large" }, 413);
   const signature = c.req.header("x-hub-signature-256") || c.req.header("X-Hub-Signature-256") || null;
   const delivery = c.req.header("x-github-delivery") || c.req.header("X-GitHub-Delivery") || c.req.header("x-github-delivery") || `manual-${Date.now()}`;
   const event = c.req.header("x-github-event") || c.req.header("X-GitHub-Event") || "unknown";

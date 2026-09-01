@@ -35,8 +35,10 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 
 # fusioneer
 .fusioneer/
-*.db
-*.db-journal
 data/
 events/
 .fusioneer-runtime/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm

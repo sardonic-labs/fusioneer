@@ -17,18 +17,20 @@ Title like `feat: add cron trigger` or `fix: verify exit code handling`. The iss
 ```sh
 git fetch origin main
 git checkout main && git pull --ff-only origin main
-git checkout -b <type>/<short-slug>-#<issue>
-# type: feat | fix | docs | chore
-# e.g. feat/cron-trigger-#42
+# fusioneer branch format (matches src/worktree.ts:branchName): fusioneer/<type>-<issue>-<slug>
+git checkout -b fusioneer/feat-42-cron-trigger
+# type: feat | fix | docs | chore  (slug auto-truncated to 40 chars)
 ```
 
-One issue per branch. Branch must contain `#<issue>`. Never commit directly to `main`.
+Alternative local shorthand `<type>/<short-slug>-#<issue>` (e.g. `feat/cron-trigger-#42`) is accepted but CI normalizes to `fusioneer/<type>-<issue>-<slug>`.
+
+One issue per branch. Branch must contain `#<issue>` or `fusioneer/<type>-<issue>-`. Never commit directly to `main`.
 
 ## 3. PR with issue link
 
 ```sh
 git add <files> && git commit -m "feat: short description (#42)"
-git push -u origin feat/cron-trigger-#42
+git push -u origin fusioneer/feat-42-cron-trigger
 gh pr create --title "feat: add cron trigger (#42)" --body "Closes #42"
 ```
 

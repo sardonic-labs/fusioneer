@@ -21,13 +21,19 @@ You label a GitHub issue `fusioneer:auto` (or open a PR) — a 24/7 supervisor o
 ## Quick start
 
 ```bash
+# Easiest (VPS)
+curl -fsSL https://raw.githubusercontent.com/sardonic-labs/fusioneer/main/install.sh | bash -s -- --vps --domain https://fusioneer.example.com
+# → prompts for .env, then docker compose up -d (webhook at https://fusioneer.example.com/webhook/github)
+
+# Easiest (per repo — one liner, no submodule dance, asks where fusioneer is)
+bunx fusioneer init --domain https://fusioneer.example.com
+# or: curl -fsSL https://raw.githubusercontent.com/sardonic-labs/fusioneer/main/install.sh | bash -s -- --domain https://fusioneer.example.com
+
+# Manual
 bun install
-# VPS
-cp .env.example .env  # ANTHROPIC_API_KEY, GITHUB_TOKEN, FUSIONEER_ALLOW_REPOS
-docker compose up -d  # webhook at https://fusioneer.yourdomain.xyz/webhook/github
-# per repo
-git submodule add https://github.com/sardonic-labs/fusioneer .opencode/fusioneer
-./.opencode/fusioneer/bootstrap.sh
+cp .env.example .env  # ANTHROPIC_API_KEY, GITHUB_TOKEN, FUSIONEER_ALLOW_REPOS, FUSIONEER_DOMAIN, FUSIONEER_DASHBOARD_TOKEN
+docker compose up -d
+git submodule add https://github.com/sardonic-labs/fusioneer .opencode/fusioneer && ./.opencode/fusioneer/bootstrap.sh --domain https://fusioneer.example.com
 ```
 
 See [`PLAN.md`](./PLAN.md) for architecture, pipeline, and phases.
@@ -35,8 +41,13 @@ See [`PLAN.md`](./PLAN.md) for architecture, pipeline, and phases.
 ## Development
 
 ```bash
-bun run index.ts
-bun tsc --noEmit
+bun install
+bun run check          # tsc --noEmit
+bun fusioneer doctor   # bun/opencode/gh auth + env
+bun run index.ts       # Hono on :3000 — GET /health /jobs /jobs/:id/logs /jobs/:id/logs/stream /agents
+# manual issue run:
+bun fusioneer run --repo sardonic-labs/sourced --issue 6 --dry-run
+docker compose up -d   # production — see docs/SELF_HOSTING.md
 ```
 
 Requires Bun 1.4+, opencode, `gh` CLI. License [MIT](./LICENSE).

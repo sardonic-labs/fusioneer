@@ -1,31 +1,64 @@
 #!/usr/bin/env bun
 import { run } from "./src/runner.ts";
 
+function parse(argv: string[]): Record<string, string | boolean> {
+  const o: Record<string, string | boolean> = {};
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i]!;
+    if (a === "--dry-run") o["dryRun"] = true;
+    else if (a.startsWith("--") && argv[i + 1] && !argv[i + 1]!.startsWith("--")) o[a.slice(2)] = argv[++i]!;
+    else if (a.startsWith("--") && a.includes("=")) { const [k, v] = a.slice(2).split("="); o[k!] = v!; }
+  }
+  return o;
+}
+
+async function doctor() {
+  const checks: [string, () => Promise<boolean>][] = [
+    ["bun", async () => { const p = Bun.spawn(["bun", "--version"], { stdout: "pipe" }); const t = await new Response(p.stdout).text(); await p.exited; return !!t.trim(); }],
+    ["opencode", async () => { const p = Bun.spawn(["opencode", "--version"], { stdout: "pipe", stderr: "pipe" }); const [, c] = await Promise.all([new Response(p.stdout).text(), p.exited]); return c === 0; }],
+    ["gh auth", async () => { const p = Bun.spawn(["gh", "auth", "status"], { stdout: "pipe", stderr: "pipe" }); const c = await p.exited; return c === 0; }],
+    ["gh repo view", async () => true],
+  ];
+  let ok = true;
+  for (const [name, fn] of checks) {
+    try { const res = await fn(); console.log(`${res ? "✓" : "✗"} ${name}`); if (!res) ok = false; } catch { console.log(`✗ ${name}`); ok = false; }
+  }
+  console.log(`env GITHUB_TOKEN: ${process.env.GITHUB_TOKEN ? "set" : "MISSING"} | GITHUB_WEBHOOK_SECRET: ${process.env.GITHUB_WEBHOOK_SECRET ? "set" : "empty"} | FUSIONEER_ALLOW_REPOS: ${process.env.FUSIONEER_ALLOW_REPOS || "(allow all)"}`);
+  if (!ok) process.exit(1);
+}
+
 const [cmd, ...rest] = process.argv.slice(2);
 if (cmd === "run") {
-  const parse = (argv: string[]) => {
-    const o: Record<string, string | boolean> = {};
-    for (let i = 0; i < argv.length; i++) {
-      const a = argv[i]!;
-      if (a === "--dry-run") o["dryRun"] = true;
-      else if (a.startsWith("--") && argv[i + 1] && !argv[i + 1]!.startsWith("--")) {
-        o[a.slice(2)] = argv[++i]!;
-      } else if (a.startsWith("--") && a.includes("=")) {
-        const [k, v] = a.slice(2).split("=");
-        o[k!] = v!;
-      }
-    }
-    return o;
-  };
   const o = parse(rest);
   const repo = String(o["repo"] ?? "");
   const issue = Number(o["issue"] ?? 0);
-  if (!repo || !issue) {
-    console.error("usage: bun fusioneer run --repo owner/name --issue N [--type feat] [--model provider/model] [--dry-run]");
-    process.exit(2);
-  }
+  if (!repo || !issue) { console.error("usage: bun fusioneer run --repo owner/name --issue N [--type feat] [--model provider/model] [--dry-run]"); process.exit(2); }
   await run({ repo, issue, type: o["type"] as string | undefined, model: o["model"] as string | undefined, dryRun: Boolean(o["dryRun"]) });
+} else if (cmd === "doctor" || cmd === "check") {
+  await doctor();
+} else if (cmd === "init") {
+  // one-liner per-repo install: bunx fusioneer init [--domain https://...] [--update]
+  const o = parse(rest);
+  const domain = String(o["domain"] ?? process.env.FUSIONEER_DOMAIN ?? "");
+  const update = Boolean(o["update"]);
+  const args = ["--domain", domain].filter(Boolean);
+  if (update) args.push("--update");
+  // delegate to bootstrap.sh (handles submodule + domain prompt)
+  const proc = Bun.spawn(["bash", "./bootstrap.sh", ...args.filter(a => a !== "--domain" || domain)], { stdout: "inherit", stderr: "inherit" });
+  const code = await proc.exited;
+  if (code !== 0) {
+    // fallback: try git submodule add if bootstrap failed due to missing submodule
+    const repoUrl = "https://github.com/sardonic-labs/fusioneer";
+    console.log(`[init] adding submodule ${repoUrl} .opencode/fusioneer ...`);
+    const add = Bun.spawn(["git", "submodule", "add", repoUrl, ".opencode/fusioneer"], { stdout: "inherit", stderr: "inherit" });
+    await add.exited;
+    const retry = Bun.spawn(["bash", "./bootstrap.sh", ...args.filter(a => a !== "--domain" || domain)], { stdout: "inherit", stderr: "inherit" });
+    await retry.exited;
+  }
+  console.log("[init] done — review: git status; git add .opencode GLOBAL_CTX.md .github/workflows/fusioneer.yml; git commit -m 'chore: install fusioneer agents'");
 } else {
   console.error("usage: bun fusioneer run --repo owner/name --issue N [--dry-run]");
+  console.error("       bun fusioneer init [--domain https://fusioneer.example.com] [--update]");
+  console.error("       bun fusioneer doctor");
   process.exit(2);
 }
