@@ -9,7 +9,10 @@
   "scripts": {
     "dev": "bun run index.ts",
     "check": "tsc --noEmit",
-    "fusioneer": "bun ./fusioneer"
+    "fusioneer": "bun ./fusioneer",
+    "build": "bun run build:web",
+    "build:web": "cd web && bun install && bun run build",
+    "preview": "bun --hot index.ts"
   },
   "bin": {
     "fusioneer": "./fusioneer"

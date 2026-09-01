@@ -19,7 +19,11 @@ WORKDIR /app
 COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile
 
+COPY web/package.json web/bun.lock ./web/
+RUN cd web && bun install --frozen-lockfile
+
 COPY . .
+RUN bun run build:web || (cd web && bun run build)
 
 EXPOSE 3000
 

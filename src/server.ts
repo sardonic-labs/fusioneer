@@ -2,6 +2,8 @@
 import { Hono, type Context } from "hono";
 // @ts-ignore
 import { cors } from "hono/cors";
+// @ts-ignore
+import { serveStatic } from "hono/bun";
 import { createJob, getJob, getJobByDelivery, listJobs, updateJob, appendEvent, appendJobLogs } from "./db.ts";
 import { enqueue, getQueueStats } from "./queue.ts";
 import { executeJob } from "./executor.ts";
@@ -323,7 +325,11 @@ app.post("/webhook/github", async (c: Context) => {
   return c.json({ ok: true, jobId, queued: true });
 });
 
-// Catch-all 404
+// Serve Svelte dashboard (built to ./public)
+app.get("/", serveStatic({ path: "./public/index.html" }));
+app.get("/*", serveStatic({ root: "./public" }));
+
+// Catch-all 404 for API
 app.all("*", (c: Context) => c.json({ error: "not found" }, 404));
 
 export default app;
