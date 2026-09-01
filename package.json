@@ -19,5 +19,9 @@
   },
   "peerDependencies": {
     "typescript": "^7"
+  },
+  "dependencies": {
+    "hono": "^4.13.5",
+    "p-queue": "^9.3.3"
   }
 }
