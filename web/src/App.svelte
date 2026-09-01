@@ -30,30 +30,46 @@
   let eventSource: EventSource | null = null;
   let searchFocused = $state(false);
   let logsEl: HTMLPreElement | null = $state(null);
+  let lastUpdated = $state('');
+  let isLoading = $state(false);
 
   const api = (p: string) => p;
 
   async function load() {
+    if (isLoading) return;
+    isLoading = true;
     try {
+      const ts = Date.now();
       const [j, q, s, h] = await Promise.all([
-        fetch(api('/jobs?limit=50')).then(r => r.json()),
-        fetch(api('/queue/stats')).then(r => r.json()).catch(() => null),
-        fetch(api('/schedules')).then(r => r.json()).catch(() => ({ schedules: [] })),
-        fetch(api('/health')).then(r => r.json()).catch(() => null),
+        fetch(api(`/jobs?limit=50&t=${ts}`), { cache: 'no-store' }).then(r => r.json()),
+        fetch(api(`/queue/stats?t=${ts}`), { cache: 'no-store' }).then(r => r.json()).catch(() => null),
+        fetch(api(`/schedules?t=${ts}`), { cache: 'no-store' }).then(r => r.json()).catch(() => ({ schedules: [] })),
+        fetch(api(`/health?t=${ts}`), { cache: 'no-store' }).then(r => r.json()).catch(() => null),
       ]);
       jobs = j.jobs ?? [];
       stats = q;
       schedules = s.schedules ?? [];
       health = h;
+      lastUpdated = new Date().toLocaleTimeString();
     } catch (e) {
       console.warn(e);
+    } finally {
+      isLoading = false;
     }
   }
 
   function startPolling() {
     load();
-    const id = setInterval(() => { if (autoRefresh) load(); }, 2000);
-    return () => clearInterval(id);
+    const id = setInterval(() => { if (autoRefresh) load(); }, 1200);
+    const onVis = () => { if (document.visibilityState === 'visible') load(); };
+    const onFocus = () => load();
+    document.addEventListener('visibilitychange', onVis);
+    window.addEventListener('focus', onFocus);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener('visibilitychange', onVis);
+      window.removeEventListener('focus', onFocus);
+    };
   }
 
   let stopPoll: (() => void) | null = null;
@@ -243,8 +259,11 @@
   <section class="layout">
     <div class="panel">
       <div class="panel-head">
-        <h2>jobs</h2>
-        <button class="btn small" onclick={load}>↻ refresh</button>
+        <h2>jobs <span class="live-dot" class:on={autoRefresh} style="margin-left:6px; vertical-align:middle;"></span></h2>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <span class="muted small" style="font-size:10px;">{lastUpdated ? `↻ ${lastUpdated}` : ''} {isLoading ? '· loading…' : ''}</span>
+          <button class="btn small" onclick={load}>↻ refresh</button>
+        </div>
       </div>
       <div class="table-wrap">
         <table>

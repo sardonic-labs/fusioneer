@@ -15,13 +15,21 @@ const app = new Hono();
 app.use("/*", cors());
 
 // Health
-app.get("/health", (c: Context) => c.json({ ok: true, version: "0.1.0" }));
+app.get("/health", (c: Context) => {
+  c.header('Cache-Control', 'no-store');
+  return c.json({ ok: true, version: "0.1.0" });
+});
 
 // Queue stats
-app.get("/queue/stats", (c: Context) => c.json(getQueueStats()));
+app.get("/queue/stats", (c: Context) => {
+  c.header('Cache-Control', 'no-store');
+  return c.json(getQueueStats());
+});
 
 // List jobs
 app.get("/jobs", (c: Context) => {
+  c.header('Cache-Control', 'no-store, no-cache, must-revalidate');
+  c.header('Pragma', 'no-cache');
   const limit = Number(c.req.query("limit") || "50");
   const offset = Number(c.req.query("offset") || "0");
   const jobs = listJobs(limit, offset);
@@ -30,6 +38,7 @@ app.get("/jobs", (c: Context) => {
 
 // Get job
 app.get("/jobs/:id", (c: Context) => {
+  c.header('Cache-Control', 'no-store');
   const id = c.req.param("id");
   if (!id) return c.json({ error: "missing id" }, 400);
   const job = getJob(id);
