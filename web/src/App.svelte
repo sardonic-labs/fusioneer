@@ -92,11 +92,11 @@
   let failedCount = $derived(jobs.filter(j=>j.status==='failed').length);
 
   function statusMeta(s: string) {
-    if (s === 'success') return { bg: 'linear-gradient(135deg,#10b981,#059669)', dot: '#065f46', label: 'success', icon: '✓' };
-    if (s === 'failed') return { bg: 'linear-gradient(135deg,#ef4444,#dc2626)', dot: '#7f1d1d', label: 'failed', icon: '✕' };
-    if (s === 'running') return { bg: 'linear-gradient(135deg,#6366f1,#8b5cf6)', dot: '#3730a3', label: 'running', icon: '◐' };
-    if (s === 'queued') return { bg: 'linear-gradient(135deg,#f59e0b,#d97706)', dot: '#78350f', label: 'queued', icon: '◷' };
-    return { bg: 'linear-gradient(135deg,#6b7280,#4b5563)', dot: '#374151', label: s, icon: '•' };
+    if (s === 'success') return { bg: '#10b981', bgLight: '#ecfdf5', text: '#065f46', dot: '#10b981', label: 'success', icon: '✓' };
+    if (s === 'failed') return { bg: '#ef4444', bgLight: '#fef2f2', text: '#991b1b', dot: '#ef4444', label: 'failed', icon: '✕' };
+    if (s === 'running') return { bg: '#6366f1', bgLight: '#eef2ff', text: '#3730a3', dot: '#6366f1', label: 'running', icon: '●' };
+    if (s === 'queued') return { bg: '#f59e0b', bgLight: '#fffbeb', text: '#92400e', dot: '#f59e0b', label: 'queued', icon: '◷' };
+    return { bg: '#6b7280', bgLight: '#f9fafb', text: '#4b5563', dot: '#6b7280', label: s, icon: '•' };
   }
 
   function timeAgo(iso: string | null) {
@@ -112,108 +112,109 @@
   function copyLogs() { if (logs) navigator.clipboard.writeText(logs); }
 </script>
 
-<div class="tahoe">
-  <div class="wallpaper"></div>
-  <div class="vibrancy"></div>
-
-  <nav class="menubar glass">
-    <div class="traffic">
-      <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
-    </div>
-    <div class="brand">
+<div class="app">
+  <nav class="nav">
+    <div class="nav-left">
       <div class="logo">◈</div>
-      <div>
+      <div class="brand">
         <div class="brand-name">fusioneer</div>
-        <div class="brand-sub">Tahoe · liquid glass · home agents</div>
+        <div class="brand-sub">home agents · Tahoe</div>
+      </div>
+      <div class="divider"></div>
+      <div class="nav-stats">
+        <span class="stat"><strong>{jobs.length}</strong> jobs</span>
+        <span class="stat live"><span class="dot" style="background:#10b981"></span> {health?.ok ? 'live' : 'offline'}</span>
       </div>
     </div>
-    <div class="menubar-right">
-      <div class="health-pill glass" class:ok={health?.ok}>
-        <span class="pulse" class:live={health?.ok}></span>
-        {health?.ok ? 'live' : 'offline'}
-      </div>
-      <label class="switch glass">
+    <div class="nav-right">
+      <label class="switch">
         <input type="checkbox" bind:checked={autoRefresh} />
-        <span class="track"><span class="thumb"></span></span>
-        <span class="switch-label">auto</span>
+        <span>auto</span>
       </label>
-      <a class="menubar-link glass" href="/health" target="_blank">API</a>
+      <a class="btn ghost" href="/health" target="_blank">API</a>
     </div>
   </nav>
 
-  <section class="hero glass">
-    <div class="hero-glow"></div>
-    <div class="hero-content">
-      <div class="hero-text">
-        <h1>Your agents,<br><span class="gradient">running at home.</span></h1>
-        <p>One Docker on your VPS. <code>webhook</code> → <code>queue</code> → <code>worktree</code> → <code>opencode run</code> → draft PR. Liquid glass, depth, vibrancy.</p>
-      </div>
-      <div class="hero-stats">
-        <div class="hero-card glass"><span class="hero-num">{jobs.length}</span><span class="hero-label">jobs</span></div>
-        <div class="hero-card glass"><span class="hero-num" style="color:#6366f1">{runningCount}</span><span class="hero-label">running</span></div>
-        <div class="hero-card glass"><span class="hero-num" style="color:#10b981">{successCount}</span><span class="hero-label">success</span></div>
-        <div class="hero-card glass"><span class="hero-num" style="color:#ef4444">{failedCount}</span><span class="hero-label">failed</span></div>
-      </div>
+  <section class="hero">
+    <div class="hero-main">
+      <h1>Your agents, <span class="accent">running at home.</span></h1>
+      <p>One Docker on your VPS · <code>webhook</code> → <code>queue</code> → <code>worktree</code> → <code>opencode run</code> → draft PR</p>
+    </div>
+    <div class="hero-stats">
+      <div class="hcard"><div class="hcard-num">{jobs.length}</div><div class="hcard-label">JOBS</div></div>
+      <div class="hcard running"><div class="hcard-num">{runningCount}</div><div class="hcard-label">RUNNING</div></div>
+      <div class="hcard success"><div class="hcard-num">{successCount}</div><div class="hcard-label">SUCCESS</div></div>
+      <div class="hcard failed"><div class="hcard-num">{failedCount}</div><div class="hcard-label">FAILED</div></div>
     </div>
   </section>
 
   <section class="grid">
-    <div class="card glass">
+    <div class="card">
       <div class="card-head">
         <h3>queue</h3>
-        <span class="tag glass">{stats?.global?.concurrency ?? 2} max · {stats?.global?.pending ?? 0} pending</span>
+        <span class="badge">{stats?.global?.concurrency ?? 2} max · {stats?.global?.pending ?? 0} pending</span>
       </div>
       {#if stats}
-        <div class="queue-bars">
-          <div class="bar-row"><span>global</span><div class="bar glass"><div class="fill" style="width: {Math.min(100, (stats.global?.pending ?? 0)*25)}%; background:linear-gradient(90deg,#6366f1,#8b5cf6)"></div></div><span class="mono">{stats.global?.pending} / {stats.global?.size}</span></div>
-          <div class="running">running: {#if stats.runningRepos?.length}<span class="pill glass mono">{stats.runningRepos.join(', ')}</span>{:else}<span class="muted">idle</span>{/if}</div>
+        <div class="queue">
+          <div class="bar-row">
+            <span class="bar-label">global</span>
+            <div class="bar"><div class="fill" style="width: {Math.min(100, (stats.global?.pending ?? 0)*25)}%"></div></div>
+            <span class="bar-val">{stats.global?.pending} / {stats.global?.size}</span>
+          </div>
+          <div class="queue-running">
+            {#if stats.runningRepos?.length}
+              {#each stats.runningRepos as r}<span class="chip">{r}</span>{/each}
+            {:else}<span class="muted">idle — no running jobs</span>{/if}
+          </div>
           {#each stats.perRepo ?? [] as r}
-            <div class="bar-row small"><span class="mono">{r.repo.split('/')[1]}</span><div class="bar thin glass"><div class="fill" style="width: {r.pending ? 60 : 0}%; background:linear-gradient(90deg,#f59e0b,#f97316)"></div></div><span class="mono">{r.pending}</span></div>
+            <div class="bar-row small">
+              <span class="bar-label mono">{r.repo.split('/')[1]}</span>
+              <div class="bar thin"><div class="fill amber" style="width: {r.pending ? 100 : 0}%"></div></div>
+              <span class="bar-val">{r.pending}</span>
+            </div>
           {/each}
         </div>
-      {:else}<div class="muted">loading queue…</div>{/if}
+      {:else}<div class="muted">loading…</div>{/if}
     </div>
 
-    <div class="card glass">
-      <div class="card-head"><h3>schedules</h3><span class="tag glass">cron · interval</span></div>
+    <div class="card">
+      <div class="card-head"><h3>schedules</h3><span class="badge">cron · interval</span></div>
       {#if schedules.length === 0}
         <div class="empty">
           <div class="empty-icon">◷</div>
-          <div>no active schedules</div>
-          <div class="muted small">add <code>.opencode/fusioneer.json</code> <code>schedules:[{`{cron:"0 6 * * *", enabled:true}`}]</code></div>
+          <div class="empty-title">no active schedules</div>
+          <div class="empty-desc">add <code>.opencode/fusioneer.json</code> <code>schedules:[{`{cron:"0 6 * * *",enabled:true}`}]</code></div>
         </div>
       {:else}
         <div class="sched-list">
           {#each schedules as s}
-            <div class="sched glass"><span class="pill mono glass">{s.type ?? 'cron'}</span><span class="mono">{s.repo}</span><span class="mono muted">{s.schedule.cron ?? s.schedule.interval}</span></div>
+            <div class="sched"><span class="pill">{s.type ?? 'cron'}</span><span class="mono">{s.repo}</span><span class="mono muted">{s.schedule.cron ?? s.schedule.interval}</span></div>
           {/each}
         </div>
       {/if}
-      <div class="card-foot muted">daily backup 02:00 UTC · WAL · 429 backoff</div>
+      <div class="card-foot">daily backup 02:00 UTC · WAL · 429 backoff</div>
     </div>
 
-    <div class="card glass">
-      <div class="card-head"><h3>filter</h3><span class="tag glass">{filtered.length}/{jobs.length}</span></div>
-      <div class="filter">
-        <div class="search glass" class:focused={searchFocused}>
-          <span class="search-icon">⌕</span>
-          <input placeholder="filter repo…" bind:value={filterRepo} onfocus={() => searchFocused=true} onblur={() => searchFocused=false} />
-        </div>
-        <div class="pills">
-          {#each ['', 'queued','running','success','failed','skipped'] as s}
-            <button class="pill-btn glass" class:active={filterStatus===s} onclick={() => filterStatus=s}>{s || 'all'}</button>
-          {/each}
-        </div>
-        <div class="muted small">{queuedCount} queued · {runningCount} running · {successCount} done</div>
+    <div class="card">
+      <div class="card-head"><h3>filter</h3><span class="badge">{filtered.length}/{jobs.length}</span></div>
+      <div class="search" class:focused={searchFocused}>
+        <span class="search-icon">⌕</span>
+        <input placeholder="filter repo…" bind:value={filterRepo} onfocus={() => searchFocused=true} onblur={() => searchFocused=false} />
       </div>
+      <div class="pills">
+        {#each ['', 'queued','running','success','failed','skipped'] as s}
+          <button class="pill-btn" class:active={filterStatus===s} onclick={() => filterStatus=s}>{s || 'all'}</button>
+        {/each}
+      </div>
+      <div class="filter-meta"><span>{queuedCount} queued</span><span>{runningCount} running</span><span>{successCount} done</span></div>
     </div>
   </section>
 
   <section class="layout">
-    <div class="panel glass">
+    <div class="panel">
       <div class="panel-head">
         <h2>jobs</h2>
-        <div class="panel-actions"><button class="ghost glass" onclick={load}>↻ refresh</button><span class="muted small">{jobs.length} total</span></div>
+        <button class="btn small" onclick={load}>↻ refresh</button>
       </div>
       <div class="table-wrap">
         <table>
@@ -224,71 +225,71 @@
               <tr class:selected={selected?.id === j.id} onclick={() => selected = j}>
                 <td>
                   <div class="repo">{j.repo}</div>
-                  <div class="issue-title muted small">{j.issue ? `#${j.issue}` : '—'} {j.issue_title ? `· ${j.issue_title.slice(0,32)}` : ''}</div>
+                  <div class="issue muted">{j.issue ? `#${j.issue}` : '—'} {j.issue_title ? `· ${j.issue_title.slice(0,32)}` : ''}</div>
                 </td>
-                <td><span class="status"><span class="status-dot" style="background:{m.dot}; box-shadow: 0 0 0 4px {m.bg}22"></span><span class="status-pill" style="background:{m.bg}">{m.icon} {m.label}</span></span></td>
-                <td><span class="phase glass">{j.phase ?? '—'}</span></td>
-                <td class="mono small" title={j.branch ?? ''}>{j.branch ? j.branch.slice(10, 36) + '…' : '—'}</td>
+                <td><span class="status-pill" style="background:{m.bgLight}; color:{m.text}; border:1px solid {m.bg}22"><span class="dot" style="background:{m.dot}"></span> {m.label}</span></td>
+                <td><span class="phase">{j.phase ?? '—'}</span></td>
+                <td class="mono small" title={j.branch ?? ''}>{j.branch ? j.branch.slice(10, 30) + '…' : '—'}</td>
                 <td class="muted small">{timeAgo(j.created_at)}</td>
               </tr>
             {/each}
             {#if filtered.length === 0}
-              <tr><td colspan="5"><div class="empty"><div class="empty-icon">∅</div><div>no jobs</div><div class="muted small">label <code>fusioneer:auto</code> or comment <code>/fusioneer</code></div></div></td></tr>
+              <tr><td colspan="5"><div class="empty"><div class="empty-icon">∅</div><div class="empty-title">no jobs</div><div class="empty-desc">label <code>fusioneer:auto</code> or comment <code>/fusioneer</code> to queue</div></div></td></tr>
             {/if}
           </tbody>
         </table>
       </div>
     </div>
 
-    <div class="panel glass detail">
+    <div class="panel detail">
       {#if selected}
         {@const m = statusMeta(selected.status)}
         <div class="detail-head">
           <div>
-            <div class="detail-title">{selected.repo}<span class="muted">#{selected.issue}</span></div>
-            <div class="muted small">{selected.issue_title ?? ''}</div>
+            <div class="detail-title">{selected.repo} <span class="muted">#{selected.issue}</span></div>
+            <div class="detail-sub muted">{selected.issue_title ?? ''}</div>
           </div>
-          <button class="ghost glass" onclick={() => selected = null}>✕</button>
+          <button class="btn icon" onclick={() => selected = null}>✕</button>
         </div>
         <div class="detail-meta">
-          <span class="status-pill large" style="background:{m.bg}">{m.icon} {selected.status}</span>
-          <span class="pill glass mono">{selected.event}</span>
-          <span class="pill glass mono">{selected.phase}</span>
-          <span class="muted small">delivery {selected.delivery_id?.slice(0,8) ?? '—'} · exit {selected.exit_code ?? '—'}</span>
+          <span class="status-pill large" style="background:{m.bgLight}; color:{m.text}; border:1px solid {m.bg}22"><span class="dot" style="background:{m.dot}"></span> {selected.status}</span>
+          <span class="chip mono">{selected.event}</span>
+          <span class="chip mono">{selected.phase}</span>
+          <span class="muted small">· {selected.delivery_id?.slice(0,8) ?? '—'} · exit {selected.exit_code ?? '—'}</span>
         </div>
         <div class="detail-grid">
-          <div><span class="muted small">branch</span><div class="mono small">{selected.branch ?? '—'}</div></div>
-          <div><span class="muted small">created</span><div class="small">{timeAgo(selected.created_at)} · {timeAgo(selected.started_at)} → {timeAgo(selected.finished_at)}</div></div>
+          <div class="meta-item"><span class="muted">branch</span><div class="mono">{selected.branch ?? '—'}</div></div>
+          <div class="meta-item"><span class="muted">time</span><div>{timeAgo(selected.created_at)} → {timeAgo(selected.finished_at) || 'now'}</div></div>
         </div>
         <div class="tabs">
-          <a class="tab glass" href={`https://github.com/${selected.repo}/issues/${selected.issue ?? ''}`} target="_blank">↗ issue</a>
-          <a class="tab glass" href={`https://github.com/${selected.repo}/pull/${selected.issue ?? ''}`} target="_blank">↗ PR</a>
-          <button class="tab glass" onclick={copyLogs}>⎘ copy logs</button>
-          <button class="tab glass" onclick={() => { if (selected) fetch(`/jobs/${selected.id}/logs`).then(r=>r.json()).then(d=>logs=d.logs); }}>↻ reload</button>
+          <a class="btn small" href={`https://github.com/${selected.repo}/issues/${selected.issue ?? ''}`} target="_blank">↗ issue</a>
+          <a class="btn small" href={`https://github.com/${selected.repo}/pull/${selected.issue ?? ''}`} target="_blank">↗ PR</a>
+          <button class="btn small" onclick={copyLogs}>⎘ copy</button>
+          <button class="btn small" onclick={() => { if (selected) fetch(`/jobs/${selected.id}/logs`).then(r=>r.json()).then(d=>logs=d.logs); }}>↻ reload</button>
         </div>
         <div class="logs-wrap">
-          <div class="logs-head"><span class="muted small">logs · {logs.length} chars · SSE live</span><span class="pulse small" class:live={selected.status==='running'}></span></div>
+          <div class="logs-head"><span class="muted">logs · {logs.length} chars</span><span class="live-dot" class:on={selected.status==='running'}></span></div>
           <pre class="logs">{logs || 'no logs yet…'}</pre>
         </div>
       {:else}
         <div class="empty big">
-          <div class="empty-icon">◈</div>
-          <div style="font-weight:600; font-size:16px;">select a job</div>
-          <div class="muted">live logs via <code>/jobs/:id/logs</code> SSE · liquid glass depth</div>
+          <div class="empty-icon large">◈</div>
+          <div class="empty-title large">select a job</div>
+          <div class="muted">live logs via <code>/jobs/:id/logs</code> SSE</div>
           <div class="how">
             <div><b>1</b> label <code>fusioneer:auto</code></div>
             <div><b>2</b> workflow <code>POST /webhook/github</code></div>
-            <div><b>3</b> SQLite queued → <code>p-queue</code> 2 global · 1 per-repo → worktree <code>opencode run</code></div>
-            <div><b>4</b> draft PR <code>Closes #n</code> · <code>/fusioneer revise:</code> force-push (max 3)</div>
+            <div><b>3</b> SQLite → <code>p-queue</code> 2·1 → worktree <code>opencode run</code></div>
+            <div><b>4</b> draft PR <code>Closes #n</code> · <code>/fusioneer revise:</code> (max 3)</div>
           </div>
         </div>
       {/if}
     </div>
   </section>
 
-  <footer class="glass">
-    <span>fusioneer Tahoe · liquid glass · hono · bun:sqlite WAL · Svelte 5</span>
-    <span class="links"><a href="/health" target="_blank">health</a> · <a href="/jobs" target="_blank">jobs</a> · <a href="/queue/stats" target="_blank">queue</a> · <a href="/schedules" target="_blank">schedules</a></span>
+  <footer>
+    <span>fusioneer · Tahoe · Svelte 5</span>
+    <span class="links"><a href="/health" target="_blank">health</a> · <a href="/jobs" target="_blank">jobs</a> · <a href="/queue/stats" target="_blank">queue</a></span>
   </footer>
 </div>
 
@@ -296,148 +297,129 @@
   :global(*){box-sizing:border-box}
   :global(body){
     margin:0;
-    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', Inter, sans-serif;
-    background: #f5f5f7;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro', Inter, system-ui, sans-serif;
+    background: #f8f8f9;
     color: #1d1d1f;
     -webkit-font-smoothing: antialiased;
-    overflow-x: hidden;
   }
-  :global(code){font-family: ui-monospace, SFMono-Regular, monospace; background: rgba(255,255,255,0.7); padding:1px 6px; border-radius:6px; font-size:.82em; border:1px solid rgba(0,0,0,0.06); backdrop-filter: blur(8px);}
-  .tahoe{position:relative; min-height:100vh; max-width:1280px; margin:0 auto; padding: 18px 20px 32px;}
-  .wallpaper{
-    position: fixed; inset:0; z-index:-2;
-    background:
-      radial-gradient(1200px 600px at 10% -10%, #a5b4fc 0%, transparent 50%),
-      radial-gradient(1000px 500px at 90% 0%, #f0abfc 0%, transparent 50%),
-      radial-gradient(800px 600px at 50% 120%, #93c5fd 0%, transparent 50%),
-      linear-gradient(180deg, #fbfbfd 0%, #f5f5f7 40%, #e8eaf0 100%);
-    filter: saturate(1.1);
-  }
-  .vibrancy{
-    position: fixed; inset:0; z-index:-1;
-    background: linear-gradient(180deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 30%);
-    backdrop-filter: blur(0.5px);
-  }
-  .glass{
-    background: rgba(255,255,255,0.68);
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
-    border: 1px solid rgba(255,255,255,0.6);
-    box-shadow: 0 8px 32px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.8);
-  }
-  .menubar{
+  :global(code){font-family: ui-monospace, SFMono-Regular, monospace; font-size:12px; background:#f1f5f9; border:1px solid #e2e8f0; padding:2px 6px; border-radius:6px;}
+  .app{max-width:1240px; margin:0 auto; padding:20px 20px 32px;}
+  /* nav — solid, high contrast */
+  .nav{
     display:flex; justify-content:space-between; align-items:center;
-    padding:10px 14px; border-radius:16px;
+    padding:12px 16px; background:#fff; border:1px solid #e2e8f0; border-radius:14px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.06);
+    position:sticky; top:12px; z-index:10;
   }
-  .traffic{display:flex; gap:6px; align-items:center;}
-  .traffic .dot{width:12px; height:12px; border-radius:50%; border:1px solid rgba(0,0,0,0.08); box-shadow: inset 0 1px 0 rgba(255,255,255,0.6), 0 1px 2px rgba(0,0,0,0.08);}
-  .traffic .red{background: #ff5f57;} .traffic .yellow{background:#febb2e;} .traffic .green{background:#28c840;}
-  .brand{display:flex; gap:12px; align-items:center;}
-  .logo{width:32px; height:32px; border-radius:10px; background: linear-gradient(135deg, #6366f1, #8b5cf6, #ec4899); color:#fff; display:grid; place-items:center; font-size:16px; box-shadow: 0 4px 16px #6366f133, inset 0 1px 0 rgba(255,255,255,0.5);}
-  .brand-name{font-weight:700; letter-spacing:-.02em; font-size:15px;}
-  .brand-sub{font-size:11px; color:#6e6e73;}
-  .menubar-right{display:flex; gap:10px; align-items:center; font-size:13px;}
-  .health-pill{display:flex; gap:6px; align-items:center; padding:6px 12px; border-radius:999px; font-weight:500; font-size:12px;}
-  .health-pill.ok{background: rgba(236,253,245,0.8); border-color: rgba(167,243,208,0.6); color:#065f46;}
-  .pulse{width:8px; height:8px; border-radius:50%; background:#d4d4d8;}
-  .pulse.live{background:#10b981; box-shadow: 0 0 0 0 #10b98144; animation: pulse 2s infinite;}
-  @keyframes pulse{0%{box-shadow:0 0 0 0 #10b98166}70%{box-shadow:0 0 0 8px #10b98100}100%{box-shadow:0 0 0 0 #10b98100}}
-  .pulse.small{width:6px; height:6px;}
-  .switch{display:flex; gap:6px; align-items:center; cursor:pointer; font-size:12px; color:#6e6e73; padding:4px 8px; border-radius:999px;}
-  .switch input{appearance:none; width:28px; height:16px; background:rgba(0,0,0,0.08); border-radius:999px; position:relative; cursor:pointer; transition:.2s; border:1px solid rgba(0,0,0,0.06);}
-  .switch input:checked{background:#6366f1;}
-  .switch input::after{content:''; position:absolute; top:1px; left:1px; width:12px; height:12px; background:#fff; border-radius:50%; transition:.2s; box-shadow:0 1px 3px #0002;}
-  .switch input:checked::after{transform: translateX(12px);}
-  .menubar-link{padding:6px 12px; border-radius:999px; text-decoration:none; color:#1d1d1f; font-size:12px; font-weight:500;}
-  .menubar-link:hover{background: rgba(255,255,255,0.9);}
+  .nav-left{display:flex; gap:14px; align-items:center;}
+  .logo{width:32px; height:32px; border-radius:9px; background: linear-gradient(135deg, #6366f1, #8b5cf6); color:#fff; display:grid; place-items:center; font-size:16px; font-weight:700;}
+  .brand-name{font-weight:700; font-size:15px; letter-spacing:-.02em; line-height:1;}
+  .brand-sub{font-size:11px; color:#64748b; margin-top:2px;}
+  .divider{width:1px; height:28px; background:#e2e8f0; margin:0 2px;}
+  .nav-stats{display:flex; gap:12px; font-size:12px; color:#64748b;}
+  .stat strong{color:#1e293b;}
+  .nav-right{display:flex; gap:10px; align-items:center;}
+  .switch{display:flex; gap:6px; align-items:center; font-size:13px; color:#475569; cursor:pointer;}
+  .switch input{accent-color:#6366f1;}
+  .btn{padding:7px 12px; border-radius:999px; border:1px solid #e2e8f0; background:#fff; font-size:13px; font-weight:500; cursor:pointer; text-decoration:none; color:#1e293b;}
+  .btn:hover{background:#f8fafc; border-color:#cbd5e1;}
+  .btn.ghost{background:#fff;}
+  .btn.small{padding:5px 10px; font-size:12px;}
+  .btn.icon{width:32px; height:32px; padding:0; display:grid; place-items:center;}
 
+  /* hero — subtle glass but solid */
   .hero{
-    margin:16px 0 14px; border-radius:24px; padding:22px 20px; position:relative; overflow:hidden;
+    margin:20px 0 16px; display:grid; grid-template-columns: 1.35fr .65fr; gap:16px; align-items:center;
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border:1px solid #e2e8f0; border-radius:16px; padding:20px;
   }
-  .hero-glow{
-    position:absolute; inset:0; background:
-      radial-gradient(600px 300px at 20% 0%, rgba(99,102,241,0.12) 0%, transparent 60%),
-      radial-gradient(500px 300px at 90% 20%, rgba(236,72,153,0.10) 0%, transparent 60%);
-    pointer-events:none;
-  }
-  .hero-content{position:relative; display:grid; grid-template-columns: 1.2fr .8fr; gap:16px; align-items:center;}
-  .hero-text h1{margin:0; font-size:30px; letter-spacing:-.04em; line-height:1.05; font-weight:700;}
-  .gradient{background: linear-gradient(135deg,#6366f1 0%,#8b5cf6 50%,#ec4899 100%); -webkit-background-clip:text; -webkit-text-fill-color: transparent; background-clip:text;}
-  .hero-text p{margin:8px 0 0; color:#6e6e73; font-size:14px; line-height:1.5;}
+  .hero h1{margin:0; font-size:26px; letter-spacing:-.03em; line-height:1.15;}
+  .accent{color:#6366f1;}
+  .hero p{margin:8px 0 0; color:#64748b; font-size:13px; line-height:1.5;}
   .hero-stats{display:grid; grid-template-columns: repeat(4,1fr); gap:10px;}
-  .hero-card{border-radius:16px; padding:14px; text-align:center;}
-  .hero-num{font-size:24px; font-weight:700; display:block; letter-spacing:-.03em;}
-  .hero-label{font-size:10px; text-transform:uppercase; letter-spacing:.08em; color:#6e6e73; font-weight:600;}
+  .hcard{background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:12px; text-align:center; box-shadow: 0 1px 2px rgba(0,0,0,0.04);}
+  .hcard-num{font-size:22px; font-weight:700; letter-spacing:-.02em; line-height:1;}
+  .hcard.running .hcard-num{color:#6366f1} .hcard.success .hcard-num{color:#059669} .hcard.failed .hcard-num{color:#dc2626}
+  .hcard-label{font-size:10px; font-weight:600; letter-spacing:.08em; color:#64748b; margin-top:4px;}
 
   .grid{display:grid; grid-template-columns: 1fr 1fr 1fr; gap:12px; margin:12px 0;}
-  .card{border-radius:20px; padding:14px;}
-  .card-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;}
-  .card-head h3{margin:0; font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:#6e6e73; font-weight:600;}
-  .tag{font-size:11px; padding:4px 10px; border-radius:999px; font-weight:500;}
-  .queue-bars{display:flex; flex-direction:column; gap:8px;}
-  .bar-row{display:flex; gap:8px; align-items:center; font-size:12px;}
-  .bar-row.small{font-size:11px;}
-  .bar{flex:1; height:6px; background: rgba(0,0,0,0.06); border-radius:999px; overflow:hidden; border:1px solid rgba(255,255,255,0.5);}
-  .bar.thin{height:4px;}
-  .fill{height:100%; border-radius:999px; transition: width .6s ease; box-shadow: inset 0 1px 0 rgba(255,255,255,0.5);}
-  .running{font-size:12px; color:#6e6e73;}
-  .pill{padding:2px 10px; border-radius:999px; font-size:11px; font-weight:500;}
-  .empty{text-align:center; padding:20px; color:#6e6e73;}
-  .empty-icon{font-size:24px; margin-bottom:8px; color:#a1a1aa;}
-  .empty .small{font-size:11px;}
-  .card-foot{margin-top:10px; padding-top:8px; border-top:1px solid rgba(0,0,0,0.06); font-size:11px;}
-  .filter{display:flex; flex-direction:column; gap:8px;}
-  .search{position:relative; display:flex; align-items:center; border-radius:999px; padding:2px;}
-  .search-icon{position:absolute; left:12px; color:#6e6e73; font-size:14px; pointer-events:none;}
-  .search input{width:100%; padding:8px 12px 8px 32px; border-radius:999px; border:1px solid transparent; background: transparent; outline:none; font-size:13px; transition: .15s; color:#1d1d1f;}
-  .search.focused{border-color: rgba(99,102,241,0.3); box-shadow: 0 0 0 4px rgba(99,102,241,0.08); background: rgba(255,255,255,0.9);}
+  .card{background:#fff; border:1px solid #e2e8f0; border-radius:14px; padding:14px; box-shadow: 0 1px 2px rgba(0,0,0,0.04);}
+  .card-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;}
+  .card-head h3{margin:0; font-size:11px; font-weight:700; letter-spacing:.08em; color:#64748b; text-transform:uppercase;}
+  .badge{font-size:11px; padding:4px 8px; border-radius:999px; background:#f1f5f9; border:1px solid #e2e8f0; color:#475569; font-weight:500;}
+  .queue{display:flex; flex-direction:column; gap:10px;}
+  .bar-row{display:flex; gap:10px; align-items:center; font-size:13px;}
+  .bar-label{font-size:12px; color:#475569; min-width:48px;}
+  .bar{flex:1; height:8px; background:#f1f5f9; border-radius:999px; overflow:hidden; border:1px solid #e2e8f0;}
+  .bar.thin{height:6px;}
+  .fill{height:100%; background: #6366f1; transition: width .6s ease;}
+  .fill.amber{background:#f59e0b;}
+  .queue-running{font-size:13px; color:#64748b;}
+  .chip{background:#f1f5f9; border:1px solid #e2e8f0; padding:3px 8px; border-radius:999px; font-size:12px;}
+  .empty{text-align:center; padding:18px; color:#64748b;}
+  .empty-icon{font-size:20px; margin-bottom:6px;}
+  .empty-title{font-weight:600; color:#1e293b; font-size:13px;}
+  .empty-desc{font-size:11px; margin-top:4px; line-height:1.4;}
+  .card-foot{margin-top:12px; padding-top:10px; border-top:1px solid #f1f5f9; font-size:11px; color:#94a3b8;}
+  .sched-list{display:flex; flex-direction:column; gap:6px;}
+  .sched{display:flex; gap:8px; align-items:center; font-size:12px; padding:6px 8px; background:#f8fafc; border:1px solid #f1f5f9; border-radius:8px;}
+  .pill{padding:2px 8px; border-radius:999px; background:#fff; border:1px solid #e2e8f0; font-size:11px; font-weight:500;}
+  .filter{display:flex; flex-direction:column; gap:10px;}
+  .search{position:relative; display:flex; align-items:center;}
+  .search-icon{position:absolute; left:10px; color:#94a3b8; font-size:14px;}
+  .search input{width:100%; padding:8px 12px 8px 32px; border-radius:999px; border:1px solid #e2e8f0; background:#f8fafc; outline:none; font-size:13px;}
+  .search.focused input{border-color:#6366f1; background:#fff; box-shadow: 0 0 0 3px #6366f122;}
   .pills{display:flex; gap:6px; flex-wrap:wrap;}
-  .pill-btn{padding:5px 12px; border-radius:999px; font-size:11px; cursor:pointer; color:#6e6e73; font-weight:500; transition:.15s;}
-  .pill-btn.active{background: #1d1d1f; color:#fff; border-color:#1d1d1f; box-shadow: 0 2px 8px rgba(0,0,0,0.12);}
-  .pill-btn:hover{transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,0.08);}
+  .pill-btn{padding:6px 12px; border-radius:999px; border:1px solid #e2e8f0; background:#fff; font-size:12px; cursor:pointer; color:#475569; font-weight:500;}
+  .pill-btn.active{background:#0f172a; color:#fff; border-color:#0f172a;}
+  .filter-meta{display:flex; gap:12px; font-size:11px; color:#64748b;}
+  .filter-meta span{white-space:nowrap;}
 
   .layout{display:grid; grid-template-columns: 1.15fr .85fr; gap:12px; margin-top:12px;}
-  .panel{border-radius:20px; overflow:hidden; display:flex; flex-direction:column;}
-  .panel-head{padding:12px 14px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(0,0,0,0.06); backdrop-filter: blur(10px);}
-  .panel-head h2{margin:0; font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:#6e6e73; font-weight:600;}
-  .panel-actions{display:flex; gap:8px; align-items:center;}
-  .ghost{border-radius:999px; font-size:12px; cursor:pointer; padding:6px 12px; font-weight:500; transition:.15s;}
-  .ghost:hover{transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.08);}
-  .table-wrap{overflow:auto; max-height: 560px;}
+  .panel{background:#fff; border:1px solid #e2e8f0; border-radius:14px; overflow:hidden; display:flex; flex-direction:column; box-shadow: 0 1px 2px rgba(0,0,0,0.04);}
+  .panel-head{padding:12px 14px; display:flex; justify-content:space-between; align-items:center; background:#f8fafc; border-bottom:1px solid #e2e8f0;}
+  .panel-head h2{margin:0; font-size:11px; font-weight:700; letter-spacing:.08em; color:#64748b; text-transform:uppercase;}
+  .table-wrap{overflow:auto; max-height:520px;}
   table{width:100%; border-collapse:collapse; font-size:13px;}
-  th{position:sticky; top:0; background: rgba(251,251,253,0.8); backdrop-filter: blur(12px); text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:#6e6e73; padding:10px 12px; border-bottom:1px solid rgba(0,0,0,0.06); font-weight:600;}
-  td{padding:12px; border-bottom:1px solid rgba(0,0,0,0.04); vertical-align:top;}
-  tr{transition:.15s; cursor:pointer;}
-  tr:hover{background: rgba(255,255,255,0.5);}
-  tr.selected{background: rgba(99,102,241,0.08) !important; backdrop-filter: blur(8px);}
-  .repo{font-weight:600; font-size:12px;}
-  .issue-title{margin-top:2px;}
-  .status{display:flex; gap:6px; align-items:center;}
-  .status-dot{width:7px; height:7px; border-radius:50%;}
-  .status-pill{color:#fff; padding:3px 10px; border-radius:999px; font-size:11px; font-weight:600; letter-spacing:.02em; box-shadow: 0 1px 3px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.3);}
-  .phase{font-size:11px; padding:4px 8px; border-radius:999px; font-weight:500;}
+  th{position:sticky; top:0; background:#f8fafc; text-align:left; font-size:11px; font-weight:600; letter-spacing:.06em; color:#64748b; padding:10px 12px; border-bottom:1px solid #e2e8f0; text-transform:uppercase;}
+  td{padding:11px 12px; border-bottom:1px solid #f1f5f9; vertical-align:top;}
+  tr{cursor:pointer; transition:.12s;}
+  tr:hover{background:#f8fafc;}
+  tr.selected{background:#eef2ff !important;}
+  .repo{font-weight:600; font-size:13px; color:#0f172a;}
+  .issue{color:#64748b; font-size:12px; margin-top:2px;}
+  .status-pill{display:inline-flex; gap:6px; align-items:center; padding:3px 8px; border-radius:999px; font-size:11px; font-weight:600; letter-spacing:.02em;}
+  .dot{width:7px; height:7px; border-radius:50%;}
+  .phase{font-size:11px; padding:3px 8px; border-radius:999px; background:#f1f5f9; border:1px solid #e2e8f0; color:#475569; font-weight:500;}
   .mono{font-family: ui-monospace, SFMono-Regular, monospace; font-size:12px;}
+  .muted{color:#64748b;}
   .small{font-size:11px;}
-  .muted{color:#6e6e73;}
+  .issue.muted{font-size:12px;}
   .detail{display:flex; flex-direction:column;}
-  .detail-head{padding:16px; display:flex; justify-content:space-between; gap:12px; border-bottom:1px solid rgba(0,0,0,0.06);}
-  .detail-title{font-weight:700; letter-spacing:-.01em; font-size:15px;}
-  .detail-meta{padding:12px 16px; display:flex; gap:8px; align-items:center; flex-wrap:wrap; border-bottom:1px solid rgba(0,0,0,0.06); background: rgba(255,255,255,0.4);}
-  .status-pill.large{padding:5px 12px; font-size:12px;}
-  .detail-grid{display:grid; grid-template-columns: 1fr 1fr; gap:12px; padding:12px 16px; border-bottom:1px solid rgba(0,0,0,0.06);}
-  .tabs{display:flex; gap:8px; padding:12px 16px; border-bottom:1px solid rgba(0,0,0,0.06);}
-  .tab{padding:6px 12px; border-radius:999px; font-size:12px; text-decoration:none; color:#1d1d1f; cursor:pointer; font-weight:500; transition:.15s;}
-  .tab:hover{transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.08);}
-  .logs-wrap{padding:14px; flex:1; display:flex; flex-direction:column; min-height:0;}
-  .logs-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;}
-  .logs{margin:0; background: rgba(24,24,27,0.92); color:#e4e4e7; border-radius:12px; padding:14px; max-height: 420px; overflow:auto; white-space:pre-wrap; word-break:break-all; font-size:12px; line-height:1.6; border:1px solid rgba(255,255,255,0.06); box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 4px 16px rgba(0,0,0,0.12); backdrop-filter: blur(12px);}
+  .detail-head{padding:14px; display:flex; justify-content:space-between; gap:12px; border-bottom:1px solid #e2e8f0;}
+  .detail-title{font-weight:700; font-size:15px;}
+  .detail-sub{font-size:12px; margin-top:2px;}
+  .detail-meta{padding:10px 14px; display:flex; gap:8px; align-items:center; flex-wrap:wrap; background:#f8fafc; border-bottom:1px solid #e2e8f0;}
+  .status-pill.large{padding:4px 10px; font-size:12px;}
+  .detail-grid{display:grid; grid-template-columns: 1fr 1fr; gap:12px; padding:12px 14px; border-bottom:1px solid #e2e8f0; background:#fff;}
+  .meta-item{font-size:12px;}
+  .meta-item .muted{font-size:11px; text-transform:uppercase; letter-spacing:.06em; font-weight:600;}
+  .tabs{display:flex; gap:8px; padding:10px 14px; border-bottom:1px solid #e2e8f0; background:#fff;}
+  .tabs .btn{font-size:12px;}
+  .logs-wrap{padding:12px; flex:1; display:flex; flex-direction:column; min-height:0; background:#fff;}
+  .logs-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-size:11px;}
+  .live-dot{width:6px; height:6px; border-radius:50%; background:#cbd5e1;}
+  .live-dot.on{background:#10b981; box-shadow: 0 0 0 4px #10b98122; animation: pulse 2s infinite;}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 #10b98144}70%{box-shadow:0 0 0 6px #10b98100}100%{box-shadow:0 0 0 0 #10b98100}}
+  .logs{margin:0; background:#0f172a; color:#e2e8f0; border-radius:10px; padding:12px; max-height: 420px; overflow:auto; white-space:pre-wrap; word-break:break-all; font-size:12px; line-height:1.6; border:1px solid #1e293b;}
   .how{display:grid; gap:8px; margin-top:16px; text-align:left; font-size:12px;}
   .how div{display:flex; gap:10px; align-items:center;}
-  .how b{width:20px; height:20px; border-radius:50%; background: linear-gradient(135deg,#6366f1,#8b5cf6); color:#fff; display:grid; place-items:center; font-size:11px; flex-shrink:0; box-shadow: 0 2px 8px #6366f133;}
-  .empty.big{padding:36px 20px;}
-  footer{display:flex; justify-content:space-between; align-items:center; padding:14px 6px; font-size:12px; color:#6e6e73;}
+  .how b{width:20px; height:20px; border-radius:50%; background:#0f172a; color:#fff; display:grid; place-items:center; font-size:11px; flex-shrink:0;}
+  .empty.big{padding:32px 20px;}
+  .empty.big .empty-icon{font-size:28px;}
+  .empty.big .empty-title{font-size:15px;}
+  footer{margin-top:14px; display:flex; justify-content:space-between; align-items:center; padding:12px 0; font-size:12px; color:#64748b; border-top:1px solid #e2e8f0;}
   footer a{color:#6366f1; text-decoration:none; font-weight:500;}
   footer a:hover{text-decoration:underline;}
-  .links{display:flex; gap:8px;}
-  @media (max-width: 960px){ .hero-content{grid-template-columns:1fr} .hero-stats{grid-template-columns: repeat(4,1fr)} .grid{grid-template-columns:1fr} .layout{grid-template-columns:1fr} .hero-stats{grid-template-columns: repeat(2,1fr)} }
+  .links{display:flex; gap:6px;}
+  @media (max-width: 960px){ .hero{grid-template-columns:1fr} .hero-stats{grid-template-columns: repeat(2,1fr)} .grid{grid-template-columns:1fr} .layout{grid-template-columns:1fr} }
 </style>
