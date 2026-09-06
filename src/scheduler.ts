@@ -96,16 +96,88 @@ async function triggerScheduledJob(repo: string, sched: import("./config.ts").Sc
       });
     }).catch(() => {});
   } else {
-    // Generic scheduled run: just log and mark success for now; future: run opencode with prompt
-    const { updateJob, appendJobLogs, appendEvent } = await import("./db.ts");
-    updateJob(jobId, { status: "running", started_at: new Date().toISOString(), phase: "implement" });
-    appendJobLogs(jobId, `[scheduler] running generic scheduled task: ${prompt}\n`);
-    // Simulate success — real implementation would clone and run opencode with prompt
-    setTimeout(() => {
-      updateJob(jobId, { status: "success", finished_at: new Date().toISOString(), phase: "done" });
-      appendEvent(jobId, "job.success", { repo, schedule: sched });
-    }, 1000);
+    enqueue(repo, async () => {
+      await runScheduledPrompt({ jobId, repo, prompt, sched });
+    }).catch(() => {});
   }
+}
+
+async function runScheduledPrompt(opts: {
+  jobId: string;
+  repo: string;
+  prompt: string;
+  sched: import("./config.ts").Schedule;
+}) {
+  const { jobId, repo, prompt, sched } = opts;
+  const { updateJob, appendJobLogs, appendEvent } = await import("./db.ts");
+  const { loadFusioneerConfig, readGlobalCtx, readReviewMd, resolveVerifyCmd, hasFiducialDir } = await import("./config.ts");
+
+  updateJob(jobId, { status: "running", started_at: new Date().toISOString(), phase: "implement" });
+  appendJobLogs(jobId, `[scheduler] running generic scheduled task: ${prompt}\n`);
+  appendEvent(jobId, "job.running", { repo, schedule: sched, prompt });
+
+  const tmpRoot = await mkdtemp(join(tmpdir(), "fusioneer-sched-"));
+  const cloneDir = join(tmpRoot, "repo");
+  try {
+    const url = getCloneUrl(repo);
+    const cloneRes = await $`git clone --depth 1 ${url} ${cloneDir}`.nothrow().quiet();
+    if (cloneRes.exitCode !== 0) {
+      const err = await new Response((cloneRes as any).stderr as ReadableStream).text().catch(() => String(cloneRes.exitCode));
+      appendJobLogs(jobId, `[scheduler] clone failed for ${repo}: ${err.slice(0, 2000)}\n`);
+      updateJob(jobId, { status: "failed", finished_at: new Date().toISOString(), phase: "done", exit_code: 1 });
+      appendEvent(jobId, "job.failed", { repo, schedule: sched, reason: "clone_failed" });
+      return;
+    }
+
+    const cfg = await loadFusioneerConfig(cloneDir);
+    const hasFiducial = await hasFiducialDir(cloneDir);
+    const verifyCmd = resolveVerifyCmd(cfg, hasFiducial);
+    const globalCtx = await readGlobalCtx(cloneDir);
+    const reviewMd = await readReviewMd(cloneDir);
+
+    const { runOpencodePhase } = await import("./phases.ts");
+    const runRes = await runOpencodePhase({
+      worktreeDir: cloneDir,
+      phase: "implement",
+      repo,
+      issue: 0,
+      globalCtx,
+      reviewMd,
+      verifyCmd,
+      extra: prompt,
+      timeoutMs: 30 * 60 * 1000,
+    });
+    appendJobLogs(jobId, `[scheduler] prompt run exit=${runRes.exitCode}\n${runRes.output.slice(0, 8000)}\n`);
+
+    let exitCode = runRes.exitCode;
+    let verifyOutput = "";
+    try {
+      const { runVerifyCmd } = await import("./phases.ts");
+      const vRes = await runVerifyCmd(cloneDir, verifyCmd);
+      verifyOutput = vRes.output;
+      exitCode = vRes.exitCode;
+      appendJobLogs(jobId, `[scheduler] verify "${verifyCmd}" exit=${vRes.exitCode}\n${vRes.output.slice(0, 4000)}\n`);
+    } catch (e) {
+      appendJobLogs(jobId, `[scheduler] verify spawn failed: ${String(e).slice(0, 2000)}\n`);
+      exitCode = 1;
+    }
+
+    if (exitCode === 0) {
+      updateJob(jobId, { status: "success", finished_at: new Date().toISOString(), phase: "done", exit_code: 0 });
+      appendEvent(jobId, "job.success", { repo, schedule: sched });
+    } else {
+      updateJob(jobId, { status: "failed", finished_at: new Date().toISOString(), phase: "done", exit_code: exitCode });
+      appendEvent(jobId, "job.failed", { repo, schedule: sched, exitCode, verifyOutput: verifyOutput.slice(0, 2000) });
+    }
+  } catch (e) {
+    const msg = String(e);
+    appendJobLogs(jobId, `[scheduler] fatal: ${msg.slice(0, 4000)}\n`);
+    updateJob(jobId, { status: "failed", finished_at: new Date().toISOString(), phase: "done", exit_code: 1 });
+    appendEvent(jobId, "job.failed", { repo, schedule: sched, error: msg.slice(0, 2000) });
+  } finally {
+    await rm(tmpRoot, { recursive: true, force: true }).catch(() => {});
+  }
+
 }
 
 export async function startScheduler() {
